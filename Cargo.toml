@@ -1,0 +1,28 @@
+[package]
+authors = ["Sunrin SHIMURA (keen) <3han5chou7@gmail.com>"]
+name = "cargo-pack-docker"
+version = "0.1.0"
+
+[package.metadata]
+default-packers = ["docker"]
+files = ["README.md"]
+
+[[package.metadata.pack.docker]]
+bin = "cargo-pack-docker"
+base-image = "ubuntu:16.04"
+entrypoint = ["/bin/echo", "hello"]
+
+
+[dependencies]
+cargo = "0.16.0"
+env_logger = "0.4.0"
+error-chain = "0.9.0"
+handlebars = "0.25.0"
+log = "0.3.6"
+rustc-serialize = "0.3.22"
+semver = "0.5.0"
+tempdir = "0.3.5"
+tojson_macros = "0.3.3"
+
+[dependencies.cargo-pack]
+path = "../cargo-pack"
