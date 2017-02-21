@@ -1,22 +1,25 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use cargo_pack::CargoPack;
 use error::*;
 use std::fs;
 use handlebars::{Handlebars, no_escape};
-use rustc_serialize::json::ToJson;
 use tempdir::TempDir;
 use std::fs::File;
 use std::io::{Write, BufWriter};
 use std::process::Command;
 use semver::Version;
 use cargo::util::paths;
+use cargo::core::Workspace;
 
 
 #[derive(RustcDecodable, Debug)]
 pub struct PackDocker {
     entrypoint: Option<Vec<String>>,
+    cmd: Option<Vec<String>>,
     base_image: String,
     bin: Option<String>,
+    inject: Option<String>,
+    name: Option<String>,
 }
 
 #[derive(RustcDecodable, Debug)]
@@ -28,28 +31,54 @@ pub struct PackDockerConfig {
 pub struct Docker<'cfg> {
     config: PackDockerConfig,
     pack: CargoPack<'cfg>,
+    tags: Vec<String>,
 }
 
 
 #[derive(RustcDecodable, RustcEncodable, ToJson, Debug)]
 pub struct DockerfileConfig {
     entrypoint: Option<String>,
+    cmd: Option<String>,
     baseimage: String,
     files: Vec<String>,
     bin: String,
+    inject: String,
+}
+
+impl PackDocker {
+    fn base_name(&self, pack: &CargoPack) -> String {
+        if let Some(ref name) = self.name {
+            // strip right side of `:`
+            name.to_string()
+        } else {
+            pack.package().unwrap().name().to_string()
+        }
+    }
+
+    fn name(&self, pack: &CargoPack) -> String {
+        if let Some(ref name) = self.name {
+            name.to_string()
+        } else {
+            let package = pack.package().unwrap();
+            format!("{}{}", package.name(), package.version())
+        }
+    }
 }
 
 impl<'cfg> Docker<'cfg> {
-    pub fn new(config: PackDockerConfig, pack: CargoPack<'cfg>) -> Self {
+    pub fn new(config: PackDockerConfig, pack: CargoPack<'cfg>, tags: Vec<String>) -> Self {
         Docker {
             config: config,
             pack: pack,
+            tags: tags,
         }
     }
 
     pub fn pack(&self) -> Result<()> {
+        debug!("tags: {:?}, config: {:?}", self.tags, self.config);
+        debug!("workspace: {:?}", self.pack.package());
         debug!("preparing");
-        for pack_docker in self.config.docker.iter() {
+        for pack_docker in self.targets() {
             let tmpdir = self.prepare(pack_docker)?;
             debug!("building a image");
             self.build(tmpdir)?;
@@ -67,9 +96,13 @@ impl<'cfg> Docker<'cfg> {
             entrypoint: pack_docker.entrypoint
                 .as_ref()
                 .map(|e| e.iter().map(|s| format!("\"{}\"", s)).collect::<Vec<_>>().join(", ")),
+            cmd: pack_docker.cmd
+                .as_ref()
+                .map(|c| c.iter().map(|s| format!("\"{}\"", s)).collect::<Vec<_>>().join(", ")),
             baseimage: pack_docker.base_image.clone(),
             files: self.pack.files().into(),
             bin: bin,
+            inject: pack_docker.inject.as_ref().map(|s| s.as_ref()).unwrap_or("").to_string(),
         };
         self.gen_dockerfile(&tmp, &data)?;
         Ok(tmp)
@@ -103,8 +136,7 @@ impl<'cfg> Docker<'cfg> {
 
     fn add_bin<P: AsRef<Path>>(&self, path: P, pack_docker: &PackDocker) -> Result<String> {
         let bins = self.pack
-            .ws()
-            .current()?
+            .package()?
             .targets()
             .iter()
             .filter(|t| t.is_bin())
@@ -129,11 +161,24 @@ impl<'cfg> Docker<'cfg> {
     }
 
     fn app_name(&self) -> Result<&str> {
-        Ok(self.pack.ws().current()?.name())
+        Ok(self.pack.package()?.name())
     }
 
     fn app_version(&self) -> Result<&Version> {
-        Ok(self.pack.ws().current()?.version())
+        Ok(self.pack.package()?.version())
+    }
+
+    fn targets(&self) -> Vec<&PackDocker> {
+        if self.tags.len() == 0 {
+            self.config.docker.iter().collect()
+        } else {
+            // TODO: warn non existing tags
+            self.config
+                .docker
+                .iter()
+                .filter(|p| self.tags.contains(&p.base_name(&self.pack)))
+                .collect()
+        }
     }
 
     fn gen_dockerfile<P: AsRef<Path>>(&self, path: P, data: &DockerfileConfig) -> Result<()> {
@@ -152,11 +197,16 @@ RUN mkdir -p /opt/app/bin
 COPY {{bin}} /opt/app/bin
 WORKDIR /op/app
 
+{{inject}}
+
 {{#if entrypoint ~}}
 ENTRYPOINT [{{entrypoint}}]
 {{else ~}}
 ENTRYPOINT ["/opt/app/bin/{{bin}}"]
 {{/if ~}}
+{{#if cmd ~}}
+CMD [{{cmd}}]
+{{/if}}
 "#;
         let mut handlebars = Handlebars::new();
 

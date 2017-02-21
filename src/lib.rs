@@ -19,6 +19,7 @@ mod error {
         foreign_links {
             Io(::std::io::Error);
             Cargo(Box<::cargo::CargoError>);
+            CargPack(::cargo_pack::error::Error);
         }
     }
 }
