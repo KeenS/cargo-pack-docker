@@ -10,6 +10,7 @@ extern crate tempdir;
 #[macro_use]
 extern crate log;
 extern crate semver;
+extern crate copy_dir;
 
 mod docker;
 pub use docker::*;

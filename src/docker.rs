@@ -1,6 +1,7 @@
 use std::path::Path;
 use cargo_pack::CargoPack;
 use error::*;
+use copy_dir;
 use std::fs;
 use handlebars::{Handlebars, no_escape};
 use tempdir::TempDir;
@@ -9,7 +10,6 @@ use std::io::{Write, BufWriter};
 use std::process::Command;
 use semver::Version;
 use cargo::util::paths;
-use cargo::core::Workspace;
 
 
 #[derive(RustcDecodable, Debug)]
@@ -129,7 +129,7 @@ impl<'cfg> Docker<'cfg> {
         for file in self.pack.files() {
             let to = path.as_ref().join(file);
             debug!("copying file: from {:?} to {:?}", file, to);
-            fs::copy(file, to)?;
+            copy_dir::copy_dir(file, to)?;
         }
         Ok(())
     }
@@ -185,7 +185,8 @@ impl<'cfg> Docker<'cfg> {
         let dockerfile = path.as_ref().join("Dockerfile");
         debug!("generating {:?}", dockerfile);
         let file = File::create(dockerfile)?;
-        debug!("file create succeeded. templating");
+        debug!("file create succeeded.");
+        debug!("templating with {:?}", data);
         let mut buf = BufWriter::new(file);
         let template = r#"
 FROM {{ baseimage }}
