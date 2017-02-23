@@ -32,6 +32,7 @@ pub struct Docker<'cfg> {
     config: PackDockerConfig,
     pack: CargoPack<'cfg>,
     tags: Vec<String>,
+    is_release: bool,
 }
 
 
@@ -46,31 +47,41 @@ pub struct DockerfileConfig {
 }
 
 impl PackDocker {
-    fn base_name(&self, pack: &CargoPack) -> String {
+    fn base_name(&self, docker: &Docker) -> String {
         if let Some(ref name) = self.name {
             // strip right side of `:`
             name.to_string()
         } else {
-            pack.package().unwrap().name().to_string()
+            docker.pack.package().unwrap().name().to_string()
         }
     }
 
-    fn name(&self, pack: &CargoPack) -> String {
+    fn name(&self, docker: &Docker) -> String {
         if let Some(ref name) = self.name {
             name.to_string()
         } else {
-            let package = pack.package().unwrap();
-            format!("{}{}", package.name(), package.version())
+            let package = docker.pack.package().unwrap();
+            let version = if docker.is_release {
+                package.version().to_string()
+            } else {
+                "latest".to_string()
+            };
+            format!("{}{}", package.name(), version)
         }
     }
 }
 
 impl<'cfg> Docker<'cfg> {
-    pub fn new(config: PackDockerConfig, pack: CargoPack<'cfg>, tags: Vec<String>) -> Self {
+    pub fn new(config: PackDockerConfig,
+               pack: CargoPack<'cfg>,
+               tags: Vec<String>,
+               is_release: bool)
+               -> Self {
         Docker {
             config: config,
             pack: pack,
             tags: tags,
+            is_release: is_release,
         }
     }
 
@@ -81,7 +92,7 @@ impl<'cfg> Docker<'cfg> {
         for pack_docker in self.targets() {
             let tmpdir = self.prepare(pack_docker)?;
             debug!("building a image");
-            self.build(tmpdir)?;
+            self.build(tmpdir, pack_docker)?;
 
         }
         Ok(())
@@ -108,13 +119,12 @@ impl<'cfg> Docker<'cfg> {
         Ok(tmp)
     }
 
-    fn build<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        let image_name = self.app_name()?;
-        let image_version = self.app_version()?;
+    fn build<P: AsRef<Path>>(&self, path: P, pack_docker: &PackDocker) -> Result<()> {
+        let image_tag = pack_docker.name(self);
         let status = Command::new("/usr/bin/docker").current_dir(&path)
             .arg("build")
             .arg(path.as_ref().to_str().unwrap())
-            .args(&["-t", format!("{}:{}", image_name, image_version).as_str()])
+            .args(&["-t", image_tag.as_str()])
             .spawn()?
             .wait()?;
 
@@ -148,24 +158,25 @@ impl<'cfg> Docker<'cfg> {
         };
 
         let name = pack_docker.bin.as_ref().map(|s| s.as_ref()).unwrap_or(primary_bin_name);
-        let from = self.pack
-            .ws()
-            .target_dir()
-            .join("release")
-            .open_ro(name, self.pack.ws().config(), "waiting for the bin")?;
+        let from = if self.is_release {
+            self.pack
+                .ws()
+                .target_dir()
+                .join("release")
+                .open_ro(name, self.pack.ws().config(), "waiting for the bin")?
+        } else {
+            self.pack
+                .ws()
+                .target_dir()
+                .join("debug")
+                .open_ro(name, self.pack.ws().config(), "waiting for the bin")?
+        };
+
         let from = from.path();
         let to = path.as_ref().join(name);
         debug!("copying file: from {:?} to {:?}", from, to);
         fs::copy(from, to)?;
         Ok(name.to_string())
-    }
-
-    fn app_name(&self) -> Result<&str> {
-        Ok(self.pack.package()?.name())
-    }
-
-    fn app_version(&self) -> Result<&Version> {
-        Ok(self.pack.package()?.version())
     }
 
     fn targets(&self) -> Vec<&PackDocker> {
@@ -176,7 +187,7 @@ impl<'cfg> Docker<'cfg> {
             self.config
                 .docker
                 .iter()
-                .filter(|p| self.tags.contains(&p.base_name(&self.pack)))
+                .filter(|p| self.tags.contains(&p.base_name(&self)))
                 .collect()
         }
     }
