@@ -1,6 +1,7 @@
 # cargo-pack-docker
 A [`cargo-pack`](https://github.com/KeenS/cargo-pack)er for docker; package your application into a docker image to deploy without Dockerfile
 
+THIS PRODUCT IS ALPHA STATUS. USE AT YOUR OWN RISK
 # install
 
 ```
