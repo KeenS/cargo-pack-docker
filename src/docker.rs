@@ -195,7 +195,7 @@ impl<'cfg> Docker<'cfg> {
         let dockerfile = path.as_ref().join("Dockerfile");
         debug!("generating {:?}", dockerfile);
         let file = File::create(dockerfile)?;
-        debug!("file create succeeded.");
+        debug!("Dockerfile creation succeeded.");
         debug!("templating with {:?}", data);
         let mut buf = BufWriter::new(file);
         let template = r#"
