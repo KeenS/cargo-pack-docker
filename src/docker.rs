@@ -1,14 +1,15 @@
-use std::path::Path;
-use cargo_pack::CargoPack;
-use error::*;
-use copy_dir;
-use std::fs;
-use handlebars::{Handlebars, no_escape};
-use tempdir::TempDir;
-use std::fs::File;
-use std::io::{Write, BufWriter};
-use std::process::Command;
+
 use cargo::util::paths;
+use cargo_pack::CargoPack;
+use copy_dir;
+use error::*;
+use handlebars::{Handlebars, no_escape};
+use std::fs;
+use std::fs::File;
+use std::io::{BufWriter, Write};
+use std::path::Path;
+use std::process::Command;
+use tempdir::TempDir;
 
 
 #[derive(RustcDecodable, Debug)]
@@ -50,9 +51,9 @@ impl PackDocker {
         self.name(docker).map(|name| {
             name.rsplitn(2, ':')
                 .last()
-                        // should be safe but not confident
-                        .unwrap()
-                        .to_string()
+            // should be safe but not confident
+                .unwrap()
+                .to_string()
         })
     }
 

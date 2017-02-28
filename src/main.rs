@@ -7,11 +7,11 @@ extern crate clap;
 #[macro_use]
 extern crate log;
 
+use cargo::ops;
 use cargo::util::Config;
 use cargo_pack::CargoPack;
-use cargo::ops;
-use docker::{Docker, PackDockerConfig};
 use clap::{App, Arg, SubCommand};
+use docker::{Docker, PackDockerConfig};
 
 fn main() {
     env_logger::init().expect("failed to init env logger");
