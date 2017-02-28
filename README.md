@@ -35,7 +35,7 @@ tag = "hoge:0.1.0"
 base-image = "ubuntu:16.04"
 # the bin to include into the docker image.
 # will be placed to /opt/app/bin/
-# can be omitted if the project hav only one binary target.
+# can be omitted if the project have only one binary target.
 bin = "aaa"
 # `ENTRYPOINT` of Dockerfile. optional.
 entrypoint = ["aa", "bb"]
@@ -53,7 +53,7 @@ base-image = "ubuntu:16.04"
 bin = "bbb"
 ```
 
-the first configuration generates this Dockerfile.
+with the first configuration, build a docker image with this Dockerfile content:
 
 ```
 FROM ubuntu:16.04
