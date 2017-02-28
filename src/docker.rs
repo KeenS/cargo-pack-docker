@@ -206,7 +206,7 @@ RUN mkdir -p /opt/app/bin
   COPY {{ file }} /opt/app
 {{/each~}}
 COPY {{bin}} /opt/app/bin
-WORKDIR /op/app
+WORKDIR /opt/app
 
 {{inject}}
 
