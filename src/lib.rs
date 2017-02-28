@@ -1,3 +1,4 @@
+#![deny(dead_code)]
 extern crate cargo;
 extern crate cargo_pack;
 extern crate rustc_serialize;

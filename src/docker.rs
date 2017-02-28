@@ -8,7 +8,6 @@ use tempdir::TempDir;
 use std::fs::File;
 use std::io::{Write, BufWriter};
 use std::process::Command;
-use semver::Version;
 use cargo::util::paths;
 
 
@@ -47,27 +46,37 @@ pub struct DockerfileConfig {
 }
 
 impl PackDocker {
-    fn base_name(&self, docker: &Docker) -> String {
-        if let Some(ref name) = self.name {
-            // strip right side of `:`
-            name.to_string()
-        } else {
-            docker.pack.package().unwrap().name().to_string()
-        }
+    fn base_name(&self, docker: &Docker) -> Result<String> {
+        self.name(docker).map(|name| {
+            name.rsplitn(2, ':')
+                .last()
+                        // should be safe but not confident
+                        .unwrap()
+                        .to_string()
+        })
     }
 
-    fn name(&self, docker: &Docker) -> String {
-        if let Some(ref name) = self.name {
+    fn name(&self, docker: &Docker) -> Result<String> {
+        let bins = docker.pack
+            .package()?
+            .targets()
+            .iter()
+            .filter(|t| t.is_bin())
+            .collect::<Vec<_>>();
+        let name = if let Some(ref name) = self.name {
             name.to_string()
-        } else {
+        } else if 0 < bins.len() {
             let package = docker.pack.package().unwrap();
             let version = if docker.is_release {
                 package.version().to_string()
             } else {
                 "latest".to_string()
             };
-            format!("{}{}", package.name(), version)
-        }
+            format!("{}:{}", bins[0].name(), version)
+        } else {
+            return Err("no bins found".into());
+        };
+        Ok(name)
     }
 }
 
@@ -120,7 +129,7 @@ impl<'cfg> Docker<'cfg> {
     }
 
     fn build<P: AsRef<Path>>(&self, path: P, pack_docker: &PackDocker) -> Result<()> {
-        let image_tag = pack_docker.name(self);
+        let image_tag = pack_docker.name(self)?;
         let status = Command::new("/usr/bin/docker").current_dir(&path)
             .arg("build")
             .arg(path.as_ref().to_str().unwrap())
@@ -145,38 +154,26 @@ impl<'cfg> Docker<'cfg> {
     }
 
     fn add_bin<P: AsRef<Path>>(&self, path: P, pack_docker: &PackDocker) -> Result<String> {
-        let bins = self.pack
-            .package()?
-            .targets()
-            .iter()
-            .filter(|t| t.is_bin())
-            .collect::<Vec<_>>();
-        let primary_bin_name = if 0 < bins.len() {
-            bins[0].name()
-        } else {
-            return Err("no bins found".into());
-        };
-
-        let name = pack_docker.bin.as_ref().map(|s| s.as_ref()).unwrap_or(primary_bin_name);
+        let name = pack_docker.base_name(self)?;
         let from = if self.is_release {
             self.pack
                 .ws()
                 .target_dir()
                 .join("release")
-                .open_ro(name, self.pack.ws().config(), "waiting for the bin")?
+                .open_ro(&name, self.pack.ws().config(), "waiting for the bin")?
         } else {
             self.pack
                 .ws()
                 .target_dir()
                 .join("debug")
-                .open_ro(name, self.pack.ws().config(), "waiting for the bin")?
+                .open_ro(&name, self.pack.ws().config(), "waiting for the bin")?
         };
 
         let from = from.path();
-        let to = path.as_ref().join(name);
+        let to = path.as_ref().join(&name);
         debug!("copying file: from {:?} to {:?}", from, to);
         fs::copy(from, to)?;
-        Ok(name.to_string())
+        Ok(name)
     }
 
     fn targets(&self) -> Vec<&PackDocker> {
@@ -187,7 +184,9 @@ impl<'cfg> Docker<'cfg> {
             self.config
                 .docker
                 .iter()
-                .filter(|p| self.tags.contains(&p.base_name(&self)))
+                .filter(|p| {
+                    p.base_name(&self).map(|name| self.tags.contains(&name)).unwrap_or(false)
+                })
                 .collect()
         }
     }

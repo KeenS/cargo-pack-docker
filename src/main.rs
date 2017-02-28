@@ -4,7 +4,8 @@ extern crate cargo;
 extern crate cargo_pack_docker as docker;
 extern crate env_logger;
 extern crate clap;
-
+#[macro_use]
+extern crate log;
 
 use cargo::util::Config;
 use cargo_pack::CargoPack;
@@ -30,9 +31,15 @@ fn main() {
             .arg(Arg::with_name("TAG").help("tag of the docker image to build")))
         .get_matches();
 
+    let opts = opts.subcommand_matches("pack-docker")
+        .expect("cargo-pack-docker must be used as a subcommand");
     let tag = opts.value_of("TAG");
     let package = opts.value_of("package");
     let is_release = opts.is_present("release");
+    debug!("tag: {:?}, package: {:?}, is_release: {:?}",
+           tag,
+           package,
+           is_release);
     let config = Config::default().expect("config");
     let pack = CargoPack::new(&config, package.map(|s| s.to_string())).expect("failed");
     config.configure(0, None, &None, false, false).expect("reconfigure failed");
