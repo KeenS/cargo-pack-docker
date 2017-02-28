@@ -10,23 +10,24 @@ use cargo::util::Config;
 use cargo_pack::CargoPack;
 use cargo::ops;
 use docker::{Docker, PackDockerConfig};
-use clap::{App, Arg};
+use clap::{App, Arg, SubCommand};
 
 fn main() {
     env_logger::init().expect("failed to init env logger");
-    let opts = App::new("cargo-pack-docker")
-        .version("0.1.0")
-        .about("pack artifacts into a docker image")
-        .author("κeen")
-        .arg(Arg::with_name("package")
-            .help("parent package to pack")
-            .takes_value(true)
-            .short("p")
-            .long("package"))
-        .arg(Arg::with_name("release")
-            .help("build with release profile")
-            .long("release"))
-        .arg(Arg::with_name("TAG").help("tag of the docker image to build"))
+    let opts = App::new("cargo")
+        .subcommand(SubCommand::with_name("pack-docker")
+            .version(env!("CARGO_PKG_VERSION"))
+            .about(env!("CARGO_PKG_DESCRIPTION"))
+            .author("κeen")
+            .arg(Arg::with_name("package")
+                .help("parent package to pack")
+                .takes_value(true)
+                .short("p")
+                .long("package"))
+            .arg(Arg::with_name("release")
+                .help("build with release profile")
+                .long("release"))
+            .arg(Arg::with_name("TAG").help("tag of the docker image to build")))
         .get_matches();
 
     let tag = opts.value_of("TAG");
