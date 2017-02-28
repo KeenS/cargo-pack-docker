@@ -3,14 +3,11 @@ authors = ["Sunrin SHIMURA (keen) <3han5chou7@gmail.com>"]
 name = "cargo-pack-docker"
 version = "0.1.0"
 description = "pack artifacts into a docker image"
-
-[package.metadata.pack]
-default-packers = ["docker"]
-files = ["README.md"]
-
-[[package.metadata.pack.docker]]
-base-image = "ubuntu:16.04"
-bin = "cargo-pack-docker"
+repository = "https://github.com/KeenS/cargo-pack-docker"
+license = "MIT/Apache-2.0"
+categories = ["development-tools"]
+keywords = ["cargo-subcommand", "cargo"]
+readme = "README.md"
 
 [dependencies]
 cargo = "0.16.0"
