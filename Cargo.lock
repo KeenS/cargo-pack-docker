@@ -3,7 +3,7 @@ name = "cargo-pack-docker"
 version = "0.1.0"
 dependencies = [
  "cargo 0.16.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "cargo-pack 0.1.0",
+ "cargo-pack 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 2.20.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "copy_dir 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -113,6 +113,7 @@ dependencies = [
 [[package]]
 name = "cargo-pack"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "cargo 0.16.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "error-chain 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -808,6 +809,7 @@ dependencies = [
 "checksum backtrace-sys 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)" = "d192fd129132fbc97497c1f2ec2c2c5174e376b95f535199ef4fe0a293d33842"
 "checksum bitflags 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "aad18937a628ec6abcd26d1489012cc0e18c21798210f491af69ded9b881106d"
 "checksum cargo 0.16.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5bf5313c834cd8519dad3e3ed603a9bab71c1caf10cc3f4a9f9db576bc447a16"
+"checksum cargo-pack 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "7321a14bdc0d530e1dc476ac9586a5dbd5183b8a15cfc3ac55d4cec7d76ad341"
 "checksum cfg-if 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "de1e760d7b6535af4241fca8bd8adf68e2e7edacc6b29f5d399050c5e48cf88c"
 "checksum clap 2.20.5 (registry+https://github.com/rust-lang/crates.io-index)" = "7db281b0520e97fbd15cd615dcd8f8bcad0c26f5f7d5effe705f090f39e9a758"
 "checksum cmake 0.1.20 (registry+https://github.com/rust-lang/crates.io-index)" = "a3a6805df695087e7c1bcd9a82e03ad6fb864c8e67ac41b1348229ce5b7f0407"
