@@ -1,6 +1,6 @@
 [root]
 name = "cargo-pack-docker"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "cargo 0.16.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cargo-pack 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
