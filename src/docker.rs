@@ -1,9 +1,8 @@
-
 use cargo::util::paths;
 use cargo_pack::CargoPack;
 use copy_dir;
 use error::*;
-use handlebars::{Handlebars, no_escape};
+use handlebars::{no_escape, Handlebars};
 use std::fs;
 use std::fs::File;
 use std::io::{BufWriter, Write};
@@ -11,18 +10,18 @@ use std::path::Path;
 use std::process::Command;
 use tempdir::TempDir;
 
-
-#[derive(RustcDecodable, Debug)]
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "kebab-case")]
 pub struct PackDocker {
     entrypoint: Option<Vec<String>>,
     cmd: Option<Vec<String>>,
     base_image: String,
     bin: Option<String>,
     inject: Option<String>,
-    name: Option<String>,
+    tag: Option<String>,
 }
 
-#[derive(RustcDecodable, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct PackDockerConfig {
     docker: Vec<PackDocker>,
 }
@@ -35,8 +34,7 @@ pub struct Docker<'cfg> {
     is_release: bool,
 }
 
-
-#[derive(RustcDecodable, RustcEncodable, ToJson, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct DockerfileConfig {
     entrypoint: Option<String>,
     cmd: Option<String>,
@@ -48,7 +46,7 @@ pub struct DockerfileConfig {
 
 impl PackDocker {
     fn base_name(&self, docker: &Docker) -> Result<String> {
-        self.name(docker).map(|name| {
+        self.tag(docker).map(|name| {
             name.rsplitn(2, ':')
                 .last()
             // should be safe but not confident
@@ -57,41 +55,60 @@ impl PackDocker {
         })
     }
 
-    fn name(&self, docker: &Docker) -> Result<String> {
-        let bins = docker.pack
+    fn bin_name<'a>(&'a self, docker: &'a Docker) -> Result<&'a str> {
+        let bins = docker
+            .pack
             .package()?
             .targets()
             .iter()
             .filter(|t| t.is_bin())
+            .map(|t| t.name())
             .collect::<Vec<_>>();
-        let name = if let Some(ref name) = self.name {
-            name.to_string()
-        } else if 0 < bins.len() {
+
+        if let Some(name) = self.bin.as_ref() {
+            if bins.contains(&name.as_str()) {
+                return Ok(name);
+            } else {
+                return Err(ErrorKind::BinNotFound(name.clone()).into());
+            }
+        }
+        match bins.len() {
+            0 => Err(ErrorKind::NoBins.into()),
+            1 => Ok(bins.get(0).unwrap()),
+            _ => {
+                Err(ErrorKind::AmbiguousBinName(bins.into_iter().map(Into::into).collect()).into())
+            }
+        }
+    }
+
+    fn tag(&self, docker: &Docker) -> Result<String> {
+        if let Some(ref tag) = self.tag {
+            Ok(tag.to_string())
+        } else {
+            let bin_name = self.bin_name(docker)?;
             let package = docker.pack.package().unwrap();
             let version = if docker.is_release {
                 package.version().to_string()
             } else {
                 "latest".to_string()
             };
-            format!("{}:{}", bins[0].name(), version)
-        } else {
-            return Err("no bins found".into());
-        };
-        Ok(name)
+            Ok(format!("{}:{}", bin_name, version))
+        }
     }
 }
 
 impl<'cfg> Docker<'cfg> {
-    pub fn new(config: PackDockerConfig,
-               pack: CargoPack<'cfg>,
-               tags: Vec<String>,
-               is_release: bool)
-               -> Self {
+    pub fn new(
+        config: PackDockerConfig,
+        pack: CargoPack<'cfg>,
+        tags: Vec<String>,
+        is_release: bool,
+    ) -> Self {
         Docker {
-            config: config,
-            pack: pack,
-            tags: tags,
-            is_release: is_release,
+            config,
+            pack,
+            tags,
+            is_release,
         }
     }
 
@@ -103,7 +120,6 @@ impl<'cfg> Docker<'cfg> {
             let tmpdir = self.prepare(pack_docker)?;
             debug!("building a image");
             self.build(tmpdir, pack_docker)?;
-
         }
         Ok(())
     }
@@ -114,24 +130,36 @@ impl<'cfg> Docker<'cfg> {
         self.copy_files(&tmp)?;
         let bin = self.add_bin(&tmp, pack_docker)?;
         let data = DockerfileConfig {
-            entrypoint: pack_docker.entrypoint
-                .as_ref()
-                .map(|e| e.iter().map(|s| format!("\"{}\"", s)).collect::<Vec<_>>().join(", ")),
-            cmd: pack_docker.cmd
-                .as_ref()
-                .map(|c| c.iter().map(|s| format!("\"{}\"", s)).collect::<Vec<_>>().join(", ")),
+            entrypoint: pack_docker.entrypoint.as_ref().map(|e| {
+                e.iter()
+                    .map(|s| format!("\"{}\"", s))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            }),
+            cmd: pack_docker.cmd.as_ref().map(|c| {
+                c.iter()
+                    .map(|s| format!("\"{}\"", s))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            }),
             baseimage: pack_docker.base_image.clone(),
             files: self.pack.files().into(),
             bin: bin,
-            inject: pack_docker.inject.as_ref().map(|s| s.as_ref()).unwrap_or("").to_string(),
+            inject: pack_docker
+                .inject
+                .as_ref()
+                .map(|s| s.as_ref())
+                .unwrap_or("")
+                .to_string(),
         };
         self.gen_dockerfile(&tmp, &data)?;
         Ok(tmp)
     }
 
     fn build<P: AsRef<Path>>(&self, path: P, pack_docker: &PackDocker) -> Result<()> {
-        let image_tag = pack_docker.name(self)?;
-        let status = Command::new("/usr/bin/docker").current_dir(&path)
+        let image_tag = pack_docker.tag(self)?;
+        let status = Command::new("/usr/bin/docker")
+            .current_dir(&path)
             .arg("build")
             .arg(path.as_ref().to_str().unwrap())
             .args(&["-t", image_tag.as_str()])
@@ -155,26 +183,26 @@ impl<'cfg> Docker<'cfg> {
     }
 
     fn add_bin<P: AsRef<Path>>(&self, path: P, pack_docker: &PackDocker) -> Result<String> {
-        let name = pack_docker.base_name(self)?;
+        let name = pack_docker.bin_name(self)?;
         let from = if self.is_release {
-            self.pack
-                .ws()
-                .target_dir()
-                .join("release")
-                .open_ro(&name, self.pack.ws().config(), "waiting for the bin")?
+            self.pack.ws().target_dir().join("release").open_ro(
+                &name,
+                self.pack.ws().config(),
+                "waiting for the bin",
+            )?
         } else {
-            self.pack
-                .ws()
-                .target_dir()
-                .join("debug")
-                .open_ro(&name, self.pack.ws().config(), "waiting for the bin")?
+            self.pack.ws().target_dir().join("debug").open_ro(
+                &name,
+                self.pack.ws().config(),
+                "waiting for the bin",
+            )?
         };
 
         let from = from.path();
         let to = path.as_ref().join(&name);
         debug!("copying file: from {:?} to {:?}", from, to);
         fs::copy(from, to)?;
-        Ok(name)
+        Ok(name.into())
     }
 
     fn targets(&self) -> Vec<&PackDocker> {
@@ -186,7 +214,9 @@ impl<'cfg> Docker<'cfg> {
                 .docker
                 .iter()
                 .filter(|p| {
-                    p.base_name(&self).map(|name| self.tags.contains(&name)).unwrap_or(false)
+                    p.base_name(&self)
+                        .map(|name| self.tags.contains(&name))
+                        .unwrap_or(false)
                 })
                 .collect()
         }
@@ -223,14 +253,19 @@ CMD [{{cmd}}]
         let mut handlebars = Handlebars::new();
 
         handlebars.register_escape_fn(no_escape);
-        handlebars.register_template_string("dockerfile", template)
+        handlebars
+            .register_template_string("dockerfile", template)
             .expect("internal error: illegal template");
 
-        handlebars.renderw("dockerfile", data, &mut buf).unwrap();
+        handlebars
+            .render_to_write("dockerfile", data, &mut buf)
+            .unwrap();
         debug!("templating done");
         let _ = buf.flush()?;
-        debug!("content:{}",
-               paths::read(path.as_ref().join("Dockerfile").as_ref())?);
+        debug!(
+            "content:{}",
+            paths::read(path.as_ref().join("Dockerfile").as_ref())?
+        );
 
         Ok(())
     }
