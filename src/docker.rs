@@ -69,14 +69,14 @@ impl PackDocker {
             if bins.contains(&name.as_str()) {
                 return Ok(name);
             } else {
-                return Err(ErrorKind::BinNotFound(name.clone()).into());
+                return Err(Error::BinNotFound(name.clone()).into());
             }
         }
         match bins.len() {
-            0 => Err(ErrorKind::NoBins.into()),
+            0 => Err(Error::NoBins.into()),
             1 => Ok(bins.get(0).unwrap()),
             _ => {
-                Err(ErrorKind::AmbiguousBinName(bins.into_iter().map(Into::into).collect()).into())
+                Err(Error::AmbiguousBinName(bins.into_iter().map(Into::into).collect()).into())
             }
         }
     }
@@ -169,7 +169,7 @@ impl<'cfg> Docker<'cfg> {
         if status.success() {
             Ok(())
         } else {
-            Err("docker command faild".into())
+            Err(format_err!("docker command faild"))
         }
     }
 

@@ -2,8 +2,6 @@
 extern crate cargo;
 extern crate cargo_pack;
 extern crate copy_dir;
-#[macro_use]
-extern crate error_chain;
 extern crate handlebars;
 #[macro_use]
 extern crate log;
@@ -12,30 +10,23 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate tempdir;
+#[macro_use]
+extern crate failure;
+#[macro_use]
+extern crate failure_derive;
 
 mod docker;
 pub use docker::*;
 
 mod error {
-    error_chain!{
-        foreign_links {
-            Io(::std::io::Error);
-            Cargo(::cargo::CargoError);
-            CargPack(::cargo_pack::error::Error);
-        }
-        errors {
-            NoBins {
-                description("no bins found")
-                    display("No bins found. Cargo pack-docker only operates on bin crates")
-            }
-            AmbiguousBinName(names: Vec<String>) {
-                description("more than one bins found")
-                    display("ambiguous bin name: {:?}", names)
-            }
-            BinNotFound(name: String) {
-                description("specified name doesn't exist")
-                    display("bin '{}' doesn't exist", name)
-            }
-        }
+    #[derive(Debug, Fail)]
+    pub enum Error {
+        #[fail(display = "No bins found. Cargo pack-docker only operates on bin crates")]
+        NoBins,
+        #[fail(display = "ambiguous bin name: {:?}", _0)]
+        AmbiguousBinName(Vec<String>),
+        #[fail(display = "bin '{}' doesn't exist", _0)]
+        BinNotFound(String),
     }
+    pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
 }
