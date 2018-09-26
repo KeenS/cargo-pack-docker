@@ -1,3 +1,8 @@
+[![Build Status](https://travis-ci.org/KeenS/cargo-pack-docker.svg?branch=master)](https://travis-ci.org/KeenS/cargo-pack-docker)
+[![Build status](https://ci.appveyor.com/api/projects/status/doa9noawxji7uy1v/branch/master?svg=true)](https://ci.appveyor.com/project/KeenS/cargo-pack-docker/branch/master)
+
+
+
 # cargo-pack-docker
 A [`cargo-pack`](https://github.com/KeenS/cargo-pack)er for docker; package your application into a docker image to deploy without Dockerfile
 
