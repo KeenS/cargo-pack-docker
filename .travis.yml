@@ -130,3 +130,8 @@ branches:
 notifications:
   email:
 on_success: never
+
+addons:
+  apt:
+    packages:
+      - gcc-multilib
