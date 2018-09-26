@@ -31,7 +31,8 @@ fn doit(config: &mut Config, package: Option<String>, is_release: bool, tag: Opt
     debug!("using compile option {:?}", compile_opts);
     ops::compile(pack.ws(), &compile_opts).expect("build failed");
 
-    let docker_config: PackDockerConfig = pack.decode_from_manifest()
+    let docker_config: PackDockerConfig = pack
+        .decode_from_manifest()
         .expect("decoding pack-docker config failed");
     debug!("using docker config {:?}", docker_config);
     let docker = Docker::new(
@@ -58,20 +59,19 @@ fn main() {
                         .multiple(true)
                         .short("p")
                         .long("package"),
-                )
-                .arg(
+                ).arg(
                     Arg::with_name("release")
                         .help("build with release profile")
                         .long("release"),
-                )
-                .arg(Arg::with_name("TAG").help("tag of the docker image to build")),
-        )
-        .get_matches();
+                ).arg(Arg::with_name("TAG").help("tag of the docker image to build")),
+        ).get_matches();
 
-    let opts = opts.subcommand_matches("pack-docker")
+    let opts = opts
+        .subcommand_matches("pack-docker")
         .expect("cargo-pack-docker must be used as a subcommand");
     let tag = opts.value_of("TAG");
-    let packages = opts.values_of("package")
+    let packages = opts
+        .values_of("package")
         .map(|vs| vs.into_iter().map(|p| p.to_string()).collect::<Vec<_>>());
     let is_release = opts.is_present("release");
     debug!(

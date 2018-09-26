@@ -75,9 +75,7 @@ impl PackDocker {
         match bins.len() {
             0 => Err(Error::NoBins.into()),
             1 => Ok(bins.get(0).unwrap()),
-            _ => {
-                Err(Error::AmbiguousBinName(bins.into_iter().map(Into::into).collect()).into())
-            }
+            _ => Err(Error::AmbiguousBinName(bins.into_iter().map(Into::into).collect()).into()),
         }
     }
 
@@ -217,8 +215,7 @@ impl<'cfg> Docker<'cfg> {
                     p.base_name(&self)
                         .map(|name| self.tags.contains(&name))
                         .unwrap_or(false)
-                })
-                .collect()
+                }).collect()
         }
     }
 
