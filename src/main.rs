@@ -6,6 +6,7 @@ extern crate env_logger;
 #[macro_use]
 extern crate log;
 
+use cargo::core::{compiler::CompileMode, shell::Verbosity};
 use cargo::ops;
 use cargo::util::Config;
 use cargo_pack::CargoPack;
@@ -13,18 +14,17 @@ use clap::{App, Arg, SubCommand};
 use docker::{Docker, PackDockerConfig};
 
 fn doit(config: &mut Config, package: Option<String>, is_release: bool, tag: Option<&str>) {
-    config
-        .configure(0, None, &None, false, false, &[])
-        .expect("reconfigure failed");
+    config.shell().set_verbosity(Verbosity::Normal);
     debug!("using config {:?}", config);
     let pack = CargoPack::new(&config, package.clone()).expect("initializing cargo-pack failed");
     let package = package.into_iter().collect::<Vec<_>>();
-    let package = ops::Packages::Packages(package.as_ref());
+    let package = ops::Packages::Packages(package);
     // TODO: receive from user via CLI
     let compile_opts = {
-        let mut default = ops::CompileOptions::default(&config, ops::CompileMode::Build);
+        let mut default = ops::CompileOptions::new(&config, CompileMode::Build)
+            .expect("makeing compile option failed");
         default.spec = package;
-        default.release = is_release;
+        default.build_config.release = is_release;
         default
     };
 
