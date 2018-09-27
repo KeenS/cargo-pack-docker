@@ -156,6 +156,7 @@ impl<'cfg> Docker<'cfg> {
 
     fn build<P: AsRef<Path>>(&self, path: P, pack_docker: &PackDocker) -> Result<()> {
         let image_tag = pack_docker.tag(self)?;
+        // FIXME: take from user
         let status = Command::new("/usr/bin/docker")
             .current_dir(&path)
             .arg("build")
