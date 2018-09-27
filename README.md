@@ -9,6 +9,12 @@ A [`cargo-pack`](https://github.com/KeenS/cargo-pack)er for docker; package your
 THIS PRODUCT IS ALPHA STATUS. USE AT YOUR OWN RISK
 # install
 
+## Built binary
+
+see releases
+
+## building
+
 ```
 cargo install cargo-pack-docker
 ```
@@ -77,3 +83,39 @@ ENTRYPOINT ["aa", "bb"]
 CMD ["c", "d"]
 
 ```
+
+# Running cargo-pack-docker in docker
+
+There are images
+
+[blackenedgold/cargo-pack-docker](https://hub.docker.com/r/blackenedgold/cargo-pack-docker/)
+.
+
+To build a docker image using the cargo-pack-docker docker image, run this command.
+
+``` console
+docker run \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v `which docker`:/usr//bin/docker \
+  -v $(pwd):/tmp/app \
+  -w /tmp/app
+  blackenedgold/cargo-pack-docker \
+  cargo pack-docker
+```
+
+
+and if you prefer docker-compose, use this yaml fragment.
+
+``` yaml
+  build:
+    image: blackenedgold/cargo-pack-docker:0.3.1-rust-1.29.1
+    command: cargo pack-docker
+    working_dir: /tmp/app
+    volumes:
+      - ./ /tmp/app
+      - /var/run/docker.sock:/var/run/docker.sock
+      # your path to docker
+      - /usr/bin/docker:/usr/bin/docker
+
+```
+
