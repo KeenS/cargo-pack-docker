@@ -1,3 +1,7 @@
+# 0.3.2
+
+* add `--no-build` option
+
 # 0.3.1
 
 * update cargo
