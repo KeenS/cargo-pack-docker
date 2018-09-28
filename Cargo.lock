@@ -122,7 +122,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-pack-docker"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "cargo 0.30.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cargo-pack 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
