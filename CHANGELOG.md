@@ -1,3 +1,9 @@
+# 0.3.3
+
+* find docker binary from path
+  + was fixed to `/usr/bin/docker`
+  + resolve errors on macOS and other platforms
+
 # 0.3.2
 
 * add `--no-build` option

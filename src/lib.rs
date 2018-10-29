@@ -14,6 +14,7 @@ extern crate tempdir;
 extern crate failure;
 #[macro_use]
 extern crate failure_derive;
+extern crate which;
 
 mod docker;
 pub use docker::*;
