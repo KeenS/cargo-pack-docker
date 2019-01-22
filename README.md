@@ -108,7 +108,7 @@ and if you prefer docker-compose, use this yaml fragment.
 
 ``` yaml
   build:
-    image: blackenedgold/cargo-pack-docker:0.3.1-rust-1.29.1
+    image: blackenedgold/cargo-pack-docker:0.4.0-rust-1.32.0
     command: cargo pack-docker
     working_dir: /tmp/app
     volumes:
