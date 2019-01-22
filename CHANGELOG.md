@@ -1,5 +1,6 @@
 # 0.4.0
 
+* find docker from path
 * update dependencies
 
 # 0.3.3
