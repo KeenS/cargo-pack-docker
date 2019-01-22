@@ -17,7 +17,7 @@ extern crate failure_derive;
 extern crate which;
 
 mod docker;
-pub use docker::*;
+pub use crate::docker::*;
 
 mod error {
     #[derive(Debug, Fail)]

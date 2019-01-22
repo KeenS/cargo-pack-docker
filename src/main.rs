@@ -11,7 +11,7 @@ use cargo::ops;
 use cargo::util::Config;
 use cargo_pack::CargoPack;
 use clap::{App, Arg, SubCommand};
-use docker::{Docker, PackDockerConfig};
+use crate::docker::{Docker, PackDockerConfig};
 
 fn doit(
     config: &mut Config,

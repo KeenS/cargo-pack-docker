@@ -1,7 +1,7 @@
 use cargo::util::paths;
 use cargo_pack::CargoPack;
 use copy_dir;
-use error::*;
+use crate::error::*;
 use handlebars::{no_escape, Handlebars};
 use std::fs;
 use std::fs::File;
