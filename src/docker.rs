@@ -1,8 +1,10 @@
-use cargo::util::paths;
+use crate::error::*;
 use cargo_pack::CargoPack;
 use copy_dir;
-use crate::error::*;
+use failure::format_err;
 use handlebars::{no_escape, Handlebars};
+use log::debug;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::fs::File;
 use std::io::{BufWriter, Write};
@@ -27,9 +29,9 @@ pub struct PackDockerConfig {
 }
 
 // assuming single bin.
-pub struct Docker<'cfg> {
+pub struct Docker {
     config: PackDockerConfig,
-    pack: CargoPack<'cfg>,
+    pack: CargoPack,
     tags: Vec<String>,
     is_release: bool,
 }
@@ -49,7 +51,7 @@ impl PackDocker {
         self.tag(docker).map(|name| {
             name.rsplitn(2, ':')
                 .last()
-            // should be safe but not confident
+                // should be safe but not confident
                 .unwrap()
                 .to_string()
         })
@@ -59,14 +61,14 @@ impl PackDocker {
         let bins = docker
             .pack
             .package()?
-            .targets()
+            .targets
             .iter()
-            .filter(|t| t.is_bin())
-            .map(|t| t.name())
+            .filter(|t| t.kind.contains(&"bin".to_string()))
+            .map(|t| &t.name)
             .collect::<Vec<_>>();
 
         if let Some(name) = self.bin.as_ref() {
-            if bins.contains(&name.as_str()) {
+            if bins.contains(&name) {
                 return Ok(name);
             } else {
                 return Err(Error::BinNotFound(name.clone()).into());
@@ -86,7 +88,7 @@ impl PackDocker {
             let bin_name = self.bin_name(docker)?;
             let package = docker.pack.package().unwrap();
             let version = if docker.is_release {
-                package.version().to_string()
+                package.version.to_string()
             } else {
                 "latest".to_string()
             };
@@ -95,10 +97,10 @@ impl PackDocker {
     }
 }
 
-impl<'cfg> Docker<'cfg> {
+impl<'cfg> Docker {
     pub fn new(
         config: PackDockerConfig,
-        pack: CargoPack<'cfg>,
+        pack: CargoPack,
         tags: Vec<String>,
         is_release: bool,
     ) -> Self {
@@ -185,20 +187,19 @@ impl<'cfg> Docker<'cfg> {
     fn add_bin<P: AsRef<Path>>(&self, path: P, pack_docker: &PackDocker) -> Result<String> {
         let name = pack_docker.bin_name(self)?;
         let from = if self.is_release {
-            self.pack.ws().target_dir().join("release").open_ro(
-                &name,
-                self.pack.ws().config(),
-                "waiting for the bin",
-            )?
+            self.pack
+                .metadata()
+                .target_directory
+                .join("release")
+                .join(&name)
         } else {
-            self.pack.ws().target_dir().join("debug").open_ro(
-                &name,
-                self.pack.ws().config(),
-                "waiting for the bin",
-            )?
+            self.pack
+                .metadata()
+                .target_directory
+                .join("debug")
+                .join(&name)
         };
 
-        let from = from.path();
         let to = path.as_ref().join(&name);
         debug!("copying file: from {:?} to {:?}", from, to);
         fs::copy(from, to)?;
@@ -217,7 +218,8 @@ impl<'cfg> Docker<'cfg> {
                     p.base_name(&self)
                         .map(|name| self.tags.contains(&name))
                         .unwrap_or(false)
-                }).collect()
+                })
+                .collect()
         }
     }
 
@@ -263,7 +265,7 @@ CMD [{{cmd}}]
         let _ = buf.flush()?;
         debug!(
             "content:{}",
-            paths::read(path.as_ref().join("Dockerfile").as_ref())?
+            fs::read_to_string(path.as_ref().join("Dockerfile"))?
         );
 
         Ok(())

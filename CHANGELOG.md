@@ -1,3 +1,8 @@
+# 0.5.0
+
+* get rid of cargo dependency; use `cargo metadata` instead.
+* update dependencies
+
 # 0.4.0
 
 * find docker from path
