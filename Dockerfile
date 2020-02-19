@@ -1,5 +1,5 @@
-FROM rust:1.32.0-stretch
-ENV CARGO_PACK_DOKCER_VERSION 0.3.3
+FROM rust:1.41.0-stretch
+ENV CARGO_PACK_DOKCER_VERSION 0.5.0
 ENV DOCKER_VERSION 18.03.1-ce
 RUN wget -q https://github.com/KeenS/cargo-pack-docker/releases/download/v${CARGO_PACK_DOKCER_VERSION}/cargo-pack-docker-v${CARGO_PACK_DOKCER_VERSION}-x86_64-unknown-linux-gnu.tar.gz && \
         tar xzf cargo-pack-docker-v${CARGO_PACK_DOKCER_VERSION}-x86_64-unknown-linux-gnu.tar.gz && \
